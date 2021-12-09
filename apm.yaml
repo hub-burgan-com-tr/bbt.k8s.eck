@@ -1,0 +1,55 @@
+apiVersion: apm.k8s.elastic.co/v1
+kind: ApmServer
+metadata:
+  name: apm-server
+  namespace: company-apm
+spec:
+  version: 7.13.2
+  count: 2
+  secureSettings:
+  - secretName: apm-secret-settings
+  config:
+    apm-server:           
+      kibana:
+        host: "https://kibana-kb-http:5601"
+        username: elastic
+        password: "${ES_PASSWORD}"
+        ssl.certificate_authorities:                                                                                                        
+        - /usr/share/apm-server/config/kibana-ca/ca.crt
+        enabled: true
+    output:
+      elasticsearch:
+        hosts: ["elasticsearch-es-http.company-apm.svc:9200"]
+        username: elastic
+        password: "${ES_PASSWORD}"
+        protocol: "https"
+        ssl.certificate_authorities: ["/usr/share/apm-server/config/elasticsearch-ca/tls.crt"]
+  podTemplate:
+    spec:
+      containers:
+      - name: apm-server
+        volumeMounts:
+        - mountPath: /usr/share/apm-server/config/elasticsearch-ca
+          name: elasticsearch-ca
+          readOnly: true                                                                                                                                                  
+        - mountPath: /usr/share/apm-server/config/kibana-ca                                                                                                               
+          name: kibana-ca                                                                                                                                                 
+          readOnly: true      
+        resources:
+          requests:
+            memory: 4Gi
+            cpu: 0.5
+          limits:
+            memory: 4Gi
+            cpu: 2
+      volumes:
+      - name: elasticsearch-ca
+        secret:
+          defaultMode: 420
+          optional: false
+          secretName: elasticsearch-es-http-ca-internal # This is the secret that holds the Elasticsearch CA cert
+      - name: kibana-ca                                                                                                                                                    
+        secret:                                                                                                                                                            
+          defaultMode: 420                                                                                                                                                 
+          optional: false                                                                                                                                                  
+          secretName: kibana-kb-http-certs-internal
